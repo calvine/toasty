@@ -2,27 +2,48 @@ package pulseaudio
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"regexp"
+	"strconv"
 
 	"github.com/calvine/toasty/audio"
+	"github.com/calvine/toasty/util"
 )
 
 type pulseAudioDeviceManager struct {
+	volumePrecentRegex *regexp.Regexp
 }
 
 func NewPulseAudioDeviceManager() audio.AudioDeviceManager {
-	return &pulseAudioDeviceManager{}
+	pad := &pulseAudioDeviceManager{}
+	pad.volumePrecentRegex = regexp.MustCompile(`\d{1,3}`)
+	return pad
 }
 
-func parsePACtlListSourceSinkOutput(cmdOutput []byte) ([]audio.AudioDevice, error) {
-	// `\n\n`gm
-	emptyLineRegex := regexp.MustCompile(`(?m)^\s*$`)
-	elResults := emptyLineRegex.FindAllIndex(cmdOutput, -1)
-	fmt.Print(elResults)
-	return nil, errors.New("TODO, Implement me")
+func (p *pulseAudioDeviceManager) pulseAudioDeviceToDTO(device audioDevice) (audio.AudioDevice, error) {
+	dto := audio.AudioDevice{}
+	dto.ID = strconv.Itoa(device.Index)
+	dto.Description = device.Properties["device.description"]
+	cvp, err := strconv.Atoi(p.volumePrecentRegex.FindString(device.BaseVolume.ValuePercent))
+	if err != nil {
+		return dto, fmt.Errorf("failed to get current volume percentage for device %d: %w", dto.ID, err)
+	}
+	dto.CurrentVolumePercent = int8(cvp)
+	switch {
+	case util.MapContains(device.Properties, "device.product.name"):
+		dto.Name = device.Properties["device.product.name"]
+	case util.MapContains(device.Properties, "alsa.card_name"):
+		dto.Name = device.Properties["alsa.card_name"]
+	case util.MapContains(device.Properties, "alsa.long_card_name"):
+		dto.Name = device.Properties["alsa.long_card_name"]
+	default:
+		dto.Name = "Unknown Device"
+	}
+	dto.DeviceProperties = device.Properties
+	dto.RawDevice = device
+	return dto, nil
 }
 
 func (p *pulseAudioDeviceManager) ListAudioDevices(ctx context.Context) ([]audio.AudioDevice, error) {
@@ -33,10 +54,19 @@ func (p *pulseAudioDeviceManager) ListAudioDevices(ctx context.Context) ([]audio
 	if err != nil {
 		return nil, fmt.Errorf("failed to list sinks: %w", err)
 	}
-	devices, err := parsePACtlListSourceSinkOutput(output)
+	devices := make([]audioDevice, 0, 3)
+	err = json.Unmarshal(output, &devices)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse pactl list sinks output: %w", err)
 	}
 	fmt.Println(output)
-	return devices, nil
+	dtoDevices := make([]audio.AudioDevice, 0, len(devices))
+	for _, device := range devices {
+		dtoDevice, err := p.pulseAudioDeviceToDTO(device)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert pulse audio device (%d) to DTO version: %w", device.Index, err)
+		}
+		dtoDevices = append(dtoDevices, dtoDevice)
+	}
+	return dtoDevices, nil
 }

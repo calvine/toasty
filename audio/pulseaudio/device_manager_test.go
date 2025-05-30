@@ -1,190 +1,23 @@
 package pulseaudio
 
-import "testing"
+import (
+	"context"
+	"fmt"
+	"os"
+	"testing"
+)
 
-// CMD: pactl list sources
+type mockPulseAudioDeviceManager struct {
 
-const list_sources_output = `Source #55
-	State: SUSPENDED
-	Name: alsa_output.pci-0000_00_1f.3.analog-stereo.monitor
-	Description: Monitor of Built-in Audio Analog Stereo
-	Driver: PipeWire
-	Sample Specification: s32le 2ch 48000Hz
-	Channel Map: front-left,front-right
-	Owner Module: 4294967295
-	Mute: no
-	Volume: front-left: 65536 / 100% / 0.00 dB,   front-right: 65536 / 100% / 0.00 dB
-	        balance 0.00
-	Base Volume: 65536 / 100% / 0.00 dB
-	Monitor of Sink: alsa_output.pci-0000_00_1f.3.analog-stereo
-	Latency: 0 usec, configured 0 usec
-	Flags: HARDWARE DECIBEL_VOLUME LATENCY
-	Properties:
-		alsa.card = "0"
-		alsa.card_name = "HDA Intel PCH"
-		alsa.class = "generic"
-		alsa.components = "HDA:111d7695,f1110001,00100101 HDA:80862812,80860101,00100000"
-		alsa.device = "0"
-		alsa.driver_name = "snd_hda_intel"
-		alsa.id = "PCH"
-		alsa.long_card_name = "HDA Intel PCH at 0x605d1c8000 irq 204"
-		alsa.mixer_name = "IDT 92HD95"
-		alsa.name = "92HD95 Analog"
-		alsa.resolution_bits = "16"
-		alsa.subclass = "generic-mix"
-		alsa.subdevice = "0"
-		alsa.subdevice_name = "subdevice #0"
-		alsa.sync.id = "00000000:00000000:00000000:00000000"
-		api.alsa.card.longname = "HDA Intel PCH at 0x605d1c8000 irq 204"
-		api.alsa.card.name = "HDA Intel PCH"
-		api.alsa.path = "front:0"
-		api.alsa.pcm.card = "0"
-		api.alsa.pcm.stream = "playback"
-		audio.channels = "2"
-		audio.position = "FL,FR"
-		card.profile.device = "7"
-		device.api = "alsa"
-		device.class = "monitor"
-		device.id = "51"
-		device.profile.description = "Analog Stereo"
-		device.profile.name = "analog-stereo"
-		device.routes = "2"
-		factory.name = "api.alsa.pcm.sink"
-		media.class = "Audio/Sink"
-		device.description = "Built-in Audio"
-		node.name = "alsa_output.pci-0000_00_1f.3.analog-stereo"
-		node.nick = "92HD95 Analog"
-		node.pause-on-idle = "false"
-		object.path = "alsa:acp:PCH:7:playback"
-		port.group = "playback"
-		priority.driver = "1009"
-		priority.session = "1009"
-		factory.id = "19"
-		clock.quantum-limit = "8192"
-		client.id = "47"
-		node.driver = "true"
-		node.loop.name = "data-loop.0"
-		library.name = "audioconvert/libspa-audioconvert"
-		object.id = "55"
-		object.serial = "55"
-		api.acp.auto-port = "false"
-		api.alsa.card = "0"
-		api.alsa.use-acp = "true"
-		api.dbus.ReserveDevice1 = "Audio0"
-		api.dbus.ReserveDevice1.Priority = "-20"
-		device.bus = "pci"
-		device.bus_path = "pci-0000:00:1f.3"
-		device.enum.api = "udev"
-		device.form_factor = "internal"
-		device.icon_name = "audio-card-analog-pci"
-		device.name = "alsa_card.pci-0000_00_1f.3"
-		device.nick = "HDA Intel PCH"
-		device.plugged.usec = "20906437"
-		device.product.id = "0xa0c8"
-		device.product.name = "Tiger Lake-LP Smart Sound Technology Audio Controller"
-		device.subsystem = "sound"
-		sysfs.path = "/devices/pci0000:00/0000:00:1f.3/sound/card0"
-		device.vendor.id = "0x8086"
-		device.vendor.name = "Intel Corporation"
-		device.string = "0"
-	Ports:
-		analog-output-speaker: Speakers (type: Speaker, priority: 10000, availability group: Legacy 3, availability unknown)
-		analog-output-headphones: Headphones (type: Headphones, priority: 9900, availability group: Legacy 4, not available)
-	Active Port: analog-output-speaker
-	Formats:
-		pcm
-
-Source #56
-	State: SUSPENDED
-	Name: alsa_input.pci-0000_00_1f.3.analog-stereo
-	Description: Built-in Audio Analog Stereo
-	Driver: PipeWire
-	Sample Specification: s32le 2ch 48000Hz
-	Channel Map: front-left,front-right
-	Owner Module: 4294967295
-	Mute: no
-	Volume: front-left: 65536 / 100% / 0.00 dB,   front-right: 65536 / 100% / 0.00 dB
-	        balance 0.00
-	Base Volume: 6554 /  10% / -60.00 dB
-	Monitor of Sink: n/a
-	Latency: 0 usec, configured 0 usec
-	Flags: HARDWARE HW_MUTE_CTRL HW_VOLUME_CTRL DECIBEL_VOLUME LATENCY
-	Properties:
-		alsa.card = "0"
-		alsa.card_name = "HDA Intel PCH"
-		alsa.class = "generic"
-		alsa.components = "HDA:111d7695,f1110001,00100101 HDA:80862812,80860101,00100000"
-		alsa.device = "0"
-		alsa.driver_name = "snd_hda_intel"
-		alsa.id = "PCH"
-		alsa.long_card_name = "HDA Intel PCH at 0x605d1c8000 irq 204"
-		alsa.mixer_name = "IDT 92HD95"
-		alsa.name = "92HD95 Analog"
-		alsa.resolution_bits = "16"
-		alsa.subclass = "generic-mix"
-		alsa.subdevice = "0"
-		alsa.subdevice_name = "subdevice #0"
-		alsa.sync.id = "00000000:00000000:00000000:00000000"
-		api.alsa.card.longname = "HDA Intel PCH at 0x605d1c8000 irq 204"
-		api.alsa.card.name = "HDA Intel PCH"
-		api.alsa.path = "front:0"
-		api.alsa.pcm.card = "0"
-		api.alsa.pcm.stream = "capture"
-		audio.channels = "2"
-		audio.position = "FL,FR"
-		card.profile.device = "0"
-		device.api = "alsa"
-		device.class = "sound"
-		device.id = "51"
-		device.profile.description = "Analog Stereo"
-		device.profile.name = "analog-stereo"
-		device.routes = "2"
-		factory.name = "api.alsa.pcm.source"
-		media.class = "Audio/Source"
-		device.description = "Built-in Audio"
-		node.name = "alsa_input.pci-0000_00_1f.3.analog-stereo"
-		node.nick = "92HD95 Analog"
-		node.pause-on-idle = "false"
-		object.path = "alsa:acp:PCH:0:capture"
-		port.group = "capture"
-		priority.driver = "2009"
-		priority.session = "2009"
-		factory.id = "19"
-		clock.quantum-limit = "8192"
-		client.id = "47"
-		node.driver = "true"
-		node.loop.name = "data-loop.0"
-		library.name = "audioconvert/libspa-audioconvert"
-		object.id = "56"
-		object.serial = "56"
-		api.acp.auto-port = "false"
-		api.alsa.card = "0"
-		api.alsa.use-acp = "true"
-		api.dbus.ReserveDevice1 = "Audio0"
-		api.dbus.ReserveDevice1.Priority = "-20"
-		device.bus = "pci"
-		device.bus_path = "pci-0000:00:1f.3"
-		device.enum.api = "udev"
-		device.form_factor = "internal"
-		device.icon_name = "audio-card-analog-pci"
-		device.name = "alsa_card.pci-0000_00_1f.3"
-		device.nick = "HDA Intel PCH"
-		device.plugged.usec = "20906437"
-		device.product.id = "0xa0c8"
-		device.product.name = "Tiger Lake-LP Smart Sound Technology Audio Controller"
-		device.subsystem = "sound"
-		sysfs.path = "/devices/pci0000:00/0000:00:1f.3/sound/card0"
-		device.vendor.id = "0x8086"
-		device.vendor.name = "Intel Corporation"
-		device.string = "0"
-	Ports:
-		analog-input-internal-mic: Internal Microphone (type: Mic, priority: 8900, availability group: Legacy 1, availability unknown)
-		analog-input-mic: Microphone (type: Mic, priority: 8700, availability group: Legacy 2, not available)
-	Active Port: analog-input-internal-mic
-	Formats:
-		pcm
-`
+}
 
 func TestParseStuff(t *testing.T) {
-
+	cmdOutput, err := os.ReadFile("../../sample_command_output/pactl_list_sources_output.json")
+	if err != nil {
+		t.Errorf("failed to read command output file: %s", err)
+	}
+	pad := NewPulseAudioDeviceManager()
+	ctx := context.TODO()
+	pad.ListAudioDevices(ctx)
+	fmt.Print("t: This is a test line\n")
 }

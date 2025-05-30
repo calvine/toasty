@@ -3,13 +3,16 @@ package audio
 import "context"
 
 type AudioDevice struct {
-	ID                   string
-	Name                 string
-	CurrentVolumePercent float32
+	ID          string
+	Name        string
+	Description string
+	// This will be an integer between 0 and 100
+	CurrentVolumePercent int8
 	minVolume            int32
 	maxVolume            int32
 	currentVolume        int32
-	RawMap               map[string]string
+	DeviceProperties     map[string]string
+	RawDevice            any
 }
 
 type AudioDeviceManager interface {
