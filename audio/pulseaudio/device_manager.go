@@ -37,6 +37,8 @@ func pulseAudioDeviceToDTO(device audioDevice) (audio.AudioDevice, error) {
 	}
 	dto.CurrentVolumePercent = int8(cvp)
 	switch {
+	case device.Name != "":
+		dto.Name = device.Name
 	case util.MapContains(device.Properties, "device.product.name"):
 		dto.Name = device.Properties["device.product.name"]
 	case util.MapContains(device.Properties, "alsa.card_name"):
@@ -82,6 +84,15 @@ func (p *pulseAudioDeviceManager) getOutputDevices(ctx context.Context) ([]audio
 	}
 	p.outputDevices = dtoDevices
 	return devices, dtoDevices, nil
+}
+
+func (p *pulseAudioDeviceManager) SetDefaultOutputDevice(ctx context.Context, id string) error {
+	cmd := exec.CommandContext(ctx, "pactl", "set-default-sink", id)
+	output, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("failed to set default output device: (%s) %s - %w", output, id, err)
+	}
+	return nil
 }
 
 func (p *pulseAudioDeviceManager) ListOutputDevices(ctx context.Context) ([]audio.AudioDevice, error) {
