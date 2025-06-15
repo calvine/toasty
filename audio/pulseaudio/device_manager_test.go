@@ -1,14 +1,12 @@
 package pulseaudio
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"testing"
 )
 
 type mockPulseAudioDeviceManager struct {
-
 }
 
 func TestParseStuff(t *testing.T) {
@@ -16,8 +14,16 @@ func TestParseStuff(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to read command output file: %s", err)
 	}
-	pad := NewPulseAudioDeviceManager()
-	ctx := context.TODO()
-	pad.ListAudioDevices(ctx)
-	fmt.Print("t: This is a test line\n")
+	devices, err := parsePactlOutputForListSinks(cmdOutput)
+	if err != nil {
+		t.Errorf("failed to parse example output: %s", err)
+	}
+	fmt.Printf("devices: %+v", devices)
+	for i := range devices {
+		dtoDevice, err := pulseAudioDeviceToDTO(devices[i])
+		if err != nil {
+			t.Errorf("failed to convert pulse audio device to dto device: %s", err)
+		}
+		fmt.Printf("dto device %d: %+v", i, dtoDevice)
+	}
 }
